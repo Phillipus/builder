@@ -1,0 +1,446 @@
+name: Make it so
+
+on: 
+  workflow_dispatch:
+    inputs:
+      macNotarize:
+        description: 'Mac Notarization'     
+        default: 'false'
+
+env:
+  VERSION: 5.0.0
+  VERSION_SUFFIX: -beta2
+  
+  ARCHI_WINZIP: Archi-Win64-5.0.0-beta2.zip
+  ARCHI_WINEXE: Archi-Win64-Setup-5.0.0-beta2.exe
+  ARCHI_LNXTAR: Archi-Linux64-5.0.0-beta2.tgz
+  ARCHI_MACINTELDMG: Archi-Mac-5.0.0-beta2.dmg  
+  ARCHI_MACSILICONDMG: Archi-Mac-Silicon-5.0.0-beta2.dmg
+  
+  PRODUCT_PATH: archi/com.archimatetool.editor.product/target/products
+  LNX_PRODUCT_TAR: Archi-linux.gtk.x86_64.tar.gz
+  MAC_SILICON_PRODUCT_TAR: Archi-macosx.cocoa.aarch64.tar.gz
+  MAC_INTEL_PRODUCT_TAR: Archi-macosx.cocoa.x86_64.tar.gz
+  WIN_PRODUCT_ZIP: Archi-win32.win32.x86_64.zip
+
+  PRJ_GITHUB_DIR: archi-build/com.archimatetool.build/github
+  SITE_DIR: archi/com.archimatetool.editor.site/target
+
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+jobs:
+
+  # Run Maven and upload the product archives
+  maven-build:
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout this
+      uses: actions/checkout@v3
+      with:
+        ref: dev
+
+    - name: Checkout Archi Code
+      uses: actions/checkout@v3
+      with:
+        repository: archimatetool/archi
+        ref: master
+        path: './archi'
+    
+    - name: Set up Java
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+      
+    - name: Cache Maven Repository
+      id: cache-m2
+      uses: actions/cache@v3
+      with:
+        path: ~/.m2/repository
+        key: maven-${{ hashFiles('**/pom.xml') }}
+
+    - name: Cache Maven Build
+      id: cache-build
+      uses: actions/cache@v3
+      with:
+        path: archi
+        key: archi-BUILD
+
+    - name: Maven Build
+      if: steps.cache-build.outputs.cache-hit != 'true'
+      run: |
+        cp .github/toolchains.xml ~/.m2/toolchains.xml
+        mvn -V -f archi/pom.xml clean package -P product
+
+    - name: Upload Linux Product
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: linux-product
+        retention-days: 1
+        path: ${{ env.PRODUCT_PATH }}/${{ env.LNX_PRODUCT_TAR }}
+
+    - name: Upload Windows Product
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: windows-product
+        retention-days: 1
+        path: ${{ env.PRODUCT_PATH }}/${{ env.WIN_PRODUCT_ZIP }}
+
+    - name: Upload Mac Intel Product
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: mac-intel-product
+        retention-days: 1
+        path: ${{ env.PRODUCT_PATH }}/${{ env.MAC_INTEL_PRODUCT_TAR }}
+
+    - name: Upload Mac Silicon Product
+      uses: actions/upload-artifact@v3
+      if: success()
+      with:
+        name: mac-silicon-product
+        retention-days: 1
+        path: ${{ env.PRODUCT_PATH }}/${{ env.MAC_SILICON_PRODUCT_TAR }}
+
+    - name: Zip Archi Repository Site
+      run: |
+        cd ${{ env.SITE_DIR }}
+        zip -r -q archi-repository.zip repository
+
+    - name: Upload Archi Repository Site to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: ${{ env.SITE_DIR }}/archi-repository.zip
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
+
+  # Linux build
+  linux-build:
+    needs: ["maven-build"]
+
+    runs-on: ubuntu-latest
+
+    outputs:
+      lnxtar_checksum: ${{ steps.create-checksum.outputs.LINUXTAR_CHECKSUM }}
+
+    steps:
+
+    - name: Checkout this
+      uses: actions/checkout@v3
+      with:
+        ref: dev
+
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Cache Linux JRE
+      id: cache-jre-lnx
+      uses: actions/cache@v3
+      with:
+        path: jre-lnx
+        key: jre-lnx-17.0.5+8
+
+    - name: Download Linux JRE if not cached
+      if: steps.cache-jre-lnx.outputs.cache-hit != 'true'
+      run: |
+        curl -o jre-lnx.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_linux_hotspot_17.0.5_8.tar.gz
+        tar -xf jre-lnx.tar.gz && mv jdk-17.0.5+8-jre jre-lnx
+
+    - name: Get Linux Product
+      uses: actions/download-artifact@v3
+      with:
+        name: linux-product
+
+    - name: Untar product
+      run: tar -xf $LNX_PRODUCT_TAR
+
+    - name: Run Script
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/package-linux.sh
+
+    - name: Create checksum
+      id: create-checksum
+      run: |
+        LNXSHASUM=$(sha1sum ${{ env.ARCHI_LNXTAR }} | awk '{print $1}')
+        echo "LINUXTAR_CHECKSUM=$LNXSHASUM" >> $GITHUB_OUTPUT
+
+    - name: Upload to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: ${{ env.ARCHI_LNXTAR }}
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
+
+
+  # Windows build
+  windows-build:
+    needs: ["maven-build"]
+
+    runs-on: windows-latest
+
+    outputs:
+      winzipchecksum: ${{ steps.create-checksums.outputs.WINZIP_CHECKSUM }}
+      winexehecksum: ${{ steps.create-checksums.outputs.WINEXE_CHECKSUM }}
+
+    steps:
+
+    - name: Checkout this
+      uses: actions/checkout@v3
+      with:
+        ref: dev
+
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Cache Windows JRE
+      id: cache-jre-win
+      uses: actions/cache@v3
+      with:
+        path: jre-win
+        key: jre-win-17.0.5+8
+
+    - name: Download Windows JRE if not cached
+      if: steps.cache-jre-win.outputs.cache-hit != 'true'
+      run: |
+        curl -o jre-win.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
+        unzip -q jre-win.zip && mv jdk-17.0.5+8-jre jre-win
+
+    - name: Get Windows Product
+      uses: actions/download-artifact@v3
+      with:
+        name: windows-product
+
+    - name: Unzip product
+      run: tar -xf $env:WIN_PRODUCT_ZIP
+
+    - name: Cache Inno
+      id: cache-inno
+      uses: actions/cache@v3
+      with:
+        path: inno
+        key: inno-installer
+
+    - name: Download and install Inno if not cached
+      if: steps.cache-inno.outputs.cache-hit != 'true'
+      run: |
+        curl -L -o installer.exe http://files.jrsoftware.org/is/6/innosetup-6.2.1.exe
+        ./installer.exe /SUPPRESSMSGBOXES /VERYSILENT /ALLUSERS /dir=inno
+
+    - name: Run Script
+      shell: pwsh
+      run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.ps1
+
+    - name: Create Checksums
+      id: create-checksums
+      run: |
+        (certutil -hashfile $env:ARCHI_WINZIP SHA1)[1] | Tee-Object -variable SHASUM
+        echo "WINZIP_CHECKSUM=$SHASUM" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        (certutil -hashfile $env:ARCHI_WINEXE SHA1)[1] | Tee-Object -variable SHASUM
+        echo "WINEXE_CHECKSUM=$SHASUM" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+    - name: Upload to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: Archi-Win64*.*
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
+
+
+  # Mac Intel build
+  mac-intel-build:
+    needs: ["maven-build"]
+
+    runs-on: macos-12
+
+    outputs:
+      macintel_checksum: ${{ steps.create-checksum.outputs.MACINTEL_CHECKSUM }}
+
+    steps:
+
+    - name: Checkout this
+      uses: actions/checkout@v3
+      with:
+        ref: dev
+
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Cache Mac Intel JRE
+      id: cache-jre-mac-intel
+      uses: actions/cache@v3
+      with:
+        path: jre-mac-intel
+        key: jre-mac-intel-17.0.5+8
+
+    - name: Download Mac Intel JRE if not cached
+      if: steps.cache-jre-mac-intel.outputs.cache-hit != 'true'
+      run: |
+        curl -o jre-mac-intel.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_mac_hotspot_17.0.5_8.tar.gz
+        tar -xf jre-mac-intel.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-intel
+
+    - name: Get Mac Intel Product
+      uses: actions/download-artifact@v3
+      with:
+        name: mac-intel-product
+
+    - name: Untar product
+      run: |
+        mkdir -p Archi
+        tar -xf $MAC_INTEL_PRODUCT_TAR -C Archi
+
+    - name: Run Script
+      env: 
+        MAC_DEVELOPER_CERTIFICATE: ${{ secrets.MAC_DEVELOPER_CERTIFICATE }}
+        MAC_DEVELOPER_CERTIFICATE_PWD: ${{ secrets.MAC_DEVELOPER_CERTIFICATE_PWD }}
+        MAC_KEYCHAIN_PWD: ${{ secrets.MAC_KEYCHAIN_PWD }}
+        MAC_APPLICATION_PWD: ${{ secrets.MAC_APPLICATION_PWD }}
+        MAC_PLATFORM: Intel
+        NOTARIZE: ${{ github.event.inputs.macNotarize }}
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/package-mac.sh
+
+    - name: Create checksum
+      id: create-checksum
+      run: |
+        MACSHASUM=$(shasum ${{ env.ARCHI_MACINTELDMG }} | awk '{print $1}')
+        echo "MACINTEL_CHECKSUM=$MACSHASUM" >> $GITHUB_OUTPUT
+
+    - name: Upload to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: ${{ env.ARCHI_MACINTELDMG }}
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
+
+
+  # Mac Silicon build
+  mac-silicon-build:
+    needs: ["maven-build"]
+
+    runs-on: macos-12
+
+    outputs:
+      macsilicon_checksum: ${{ steps.create-checksum.outputs.MACSILICON_CHECKSUM }}
+
+    steps:
+
+    - name: Checkout this
+      uses: actions/checkout@v3
+      with:
+        ref: dev
+
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Cache Mac Silicon JRE
+      id: cache-jre-mac-silicon
+      uses: actions/cache@v3
+      with:
+        path: jre-mac-silicon
+        key: jre-mac-silicon-17.0.5+8
+
+    - name: Download Mac Silicon if not cached
+      if: steps.cache-jre-mac-silicon.outputs.cache-hit != 'true'
+      run: |
+        curl -o jre-mac-silicon.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.5_8.tar.gz
+        tar -xf jre-mac-silicon.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-silicon
+
+    - name: Get Mac Silicon Product
+      uses: actions/download-artifact@v3
+      with:
+        name: mac-silicon-product
+
+    - name: Untar product
+      run: |
+        mkdir -p Archi
+        tar -xf $MAC_SILICON_PRODUCT_TAR -C Archi
+
+    - name: Run Script
+      env: 
+        MAC_DEVELOPER_CERTIFICATE: ${{ secrets.MAC_DEVELOPER_CERTIFICATE }}
+        MAC_DEVELOPER_CERTIFICATE_PWD: ${{ secrets.MAC_DEVELOPER_CERTIFICATE_PWD }}
+        MAC_KEYCHAIN_PWD: ${{ secrets.MAC_KEYCHAIN_PWD }}
+        MAC_APPLICATION_PWD: ${{ secrets.MAC_APPLICATION_PWD }}
+        MAC_PLATFORM: Silicon
+        NOTARIZE: ${{ github.event.inputs.macNotarize }}
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/package-mac.sh
+
+    - name: Create checksum
+      id: create-checksum
+      run: |
+        MACSHASUM=$(shasum ${{ env.ARCHI_MACSILICONDMG }} | awk '{print $1}')
+        echo "MACSILICON_CHECKSUM=$MACSHASUM" >> $GITHUB_OUTPUT
+
+    - name: Upload to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: ${{ env.ARCHI_MACSILICONDMG }}
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
+
+
+  checksums:
+    needs: ["maven-build", "linux-build", "windows-build", "mac-intel-build", "mac-silicon-build"]
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Create Checksum File
+      run: |
+        TEXT="${{ needs.linux-build.outputs.lnxtar_checksum }}    ${{ env.ARCHI_LNXTAR }}
+        ${{ needs.mac-intel-build.outputs.macintel_checksum }}    ${{ env.ARCHI_MACINTELDMG }}
+        ${{ needs.mac-silicon-build.outputs.macsilicon_checksum }}    ${{ env.ARCHI_MACSILICONDMG }}
+        ${{ needs.windows-build.outputs.winzipchecksum }}    ${{ env.ARCHI_WINZIP }}
+        ${{ needs.windows-build.outputs.winexehecksum }}    ${{ env.ARCHI_WINEXE }}"
+
+        echo "$TEXT" > Archi-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}-SUMSSHA1
+    
+    - name: Upload Checksum File to Release
+      uses: xresloader/upload-to-github-release@v1
+      with:
+        file: Archi-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}-SUMSSHA1
+        prerelease: true
+        overwrite: true
+        tag_name: ${{ env.VERSION }}${{ env.VERSION_SUFFIX }}
+
+
