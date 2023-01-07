@@ -26,10 +26,6 @@ env:
   PRJ_GITHUB_DIR: archi-build/com.archimatetool.build/github
   SITE_DIR: archi/com.archimatetool.editor.site/target
 
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-
-
 jobs:
 
   # Run Maven and upload the product archives
@@ -43,7 +39,7 @@ jobs:
       with:
         ref: dev
 
-    - name: Checkout Archi Code
+    - name: Checkout Main repo
       uses: actions/checkout@v3
       with:
         repository: archimatetool/archi
@@ -63,12 +59,17 @@ jobs:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/pom.xml') }}
 
+    - name: SHA Hash of Archi repo
+      run: echo "GIT_HASH=$(git -C archi rev-parse master)" >> $GITHUB_ENV
+
     - name: Cache Maven Build
       id: cache-build
       uses: actions/cache@v3
       with:
-        path: archi
-        key: archi-BUILD
+        path: |
+          archi/com.archimatetool.editor.product/target/products/Archi*.*
+          archi/com.archimatetool.editor.site/target/repository
+        key: target-${{ env.GIT_HASH }}
 
     - name: Maven Build
       if: steps.cache-build.outputs.cache-hit != 'true'
@@ -115,6 +116,8 @@ jobs:
 
     - name: Upload Archi Repository Site to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: ${{ env.SITE_DIR }}/archi-repository.zip
         prerelease: true
@@ -179,6 +182,8 @@ jobs:
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: ${{ env.ARCHI_LNXTAR }}
         prerelease: true
@@ -261,6 +266,8 @@ jobs:
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: Archi-Win64*.*
         prerelease: true
@@ -335,6 +342,8 @@ jobs:
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: ${{ env.ARCHI_MACINTELDMG }}
         prerelease: true
@@ -409,6 +418,8 @@ jobs:
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: ${{ env.ARCHI_MACSILICONDMG }}
         prerelease: true
@@ -437,6 +448,8 @@ jobs:
     
     - name: Upload Checksum File to Release
       uses: xresloader/upload-to-github-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         file: Archi-${{ env.VERSION }}${{ env.VERSION_SUFFIX }}-SUMSSHA1
         prerelease: true
