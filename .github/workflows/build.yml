@@ -239,19 +239,6 @@ jobs:
     - name: Unzip product
       run: tar -xf $env:WIN_PRODUCT_ZIP
 
-    - name: Cache Inno
-      id: cache-inno
-      uses: actions/cache@v3
-      with:
-        path: inno
-        key: inno-installer
-
-    - name: Download and install Inno if not cached
-      if: steps.cache-inno.outputs.cache-hit != 'true'
-      run: |
-        curl -L -o installer.exe http://files.jrsoftware.org/is/6/innosetup-6.2.1.exe
-        ./installer.exe /SUPPRESSMSGBOXES /VERYSILENT /ALLUSERS /dir=inno
-
     - name: Run Script
       shell: pwsh
       run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.ps1
