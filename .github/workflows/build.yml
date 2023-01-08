@@ -8,21 +8,11 @@ on:
         default: 'false'
 
 env:
-  VERSION: 5.0.0
-  VERSION_SUFFIX: -beta2
-  
-  ARCHI_WINZIP: Archi-Win64-5.0.0-beta2.zip
-  ARCHI_WINEXE: Archi-Win64-Setup-5.0.0-beta2.exe
-  ARCHI_LNXTAR: Archi-Linux64-5.0.0-beta2.tgz
-  ARCHI_MACINTELDMG: Archi-Mac-5.0.0-beta2.dmg  
-  ARCHI_MACSILICONDMG: Archi-Mac-Silicon-5.0.0-beta2.dmg
-  
   PRODUCT_PATH: archi/com.archimatetool.editor.product/target/products
   LNX_PRODUCT_TAR: Archi-linux.gtk.x86_64.tar.gz
   MAC_SILICON_PRODUCT_TAR: Archi-macosx.cocoa.aarch64.tar.gz
   MAC_INTEL_PRODUCT_TAR: Archi-macosx.cocoa.x86_64.tar.gz
   WIN_PRODUCT_ZIP: Archi-win32.win32.x86_64.zip
-
   PRJ_GITHUB_DIR: archi-build/com.archimatetool.build/github
   SITE_DIR: archi/com.archimatetool.editor.site/target
 
@@ -46,6 +36,17 @@ jobs:
         ref: master
         path: './archi'
     
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Get version and binary names
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
+
     - name: Set up Java
       uses: actions/setup-java@v3
       with:
@@ -171,7 +172,12 @@ jobs:
     - name: Untar product
       run: tar -xf $LNX_PRODUCT_TAR
 
-    - name: Run Script
+      # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
+
+    - name: Run Globals
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
+
+    - name: Run Scripts
       run: bash ${{ env.PRJ_GITHUB_DIR }}/package-linux.sh
 
     - name: Create checksum
@@ -239,9 +245,15 @@ jobs:
     - name: Unzip product
       run: tar -xf $env:WIN_PRODUCT_ZIP
 
+      # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
+
+    - name: Run Globals
+      shell: bash
+      run: ${{ env.PRJ_GITHUB_DIR }}/globals.sh
+
     - name: Run Script
-      shell: pwsh
-      run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.ps1
+      shell: bash
+      run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.sh
 
     - name: Create Checksums
       id: create-checksums
@@ -310,6 +322,11 @@ jobs:
       run: |
         mkdir -p Archi
         tar -xf $MAC_INTEL_PRODUCT_TAR -C Archi
+
+      # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
+
+    - name: Run Globals
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Run Script
       env: 
@@ -387,6 +404,11 @@ jobs:
         mkdir -p Archi
         tar -xf $MAC_SILICON_PRODUCT_TAR -C Archi
 
+      # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
+
+    - name: Run Globals
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
+
     - name: Run Script
       env: 
         MAC_DEVELOPER_CERTIFICATE: ${{ secrets.MAC_DEVELOPER_CERTIFICATE }}
@@ -422,6 +444,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+    - name: Checkout Archi Build
+      uses: actions/checkout@v3
+      with:
+        repository: Phillipus/archi-build
+        ref: dev
+        path: './archi-build'
+        token: ${{ secrets.PAT }}
+
+    - name: Run Globals
+      run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Create Checksum File
       run: |
