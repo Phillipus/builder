@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       macNotarize:
-        description: 'Mac Notarization'     
+        description: 'Le Big Mac'     
         default: 'false'
 
 env:
@@ -76,7 +76,7 @@ jobs:
       if: steps.cache-build.outputs.cache-hit != 'true'
       run: |
         cp .github/toolchains.xml ~/.m2/toolchains.xml
-        mvn -V -f archi/pom.xml clean package -P product
+        mvn -V -f archi clean package -P product
 
     - name: Upload Linux Product
       uses: actions/upload-artifact@v3
@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      lnxtar_checksum: ${{ steps.create-checksum.outputs.LINUXTAR_CHECKSUM }}
+      lnxtar_checksum: ${{ steps.run-script.outputs.LINUXTAR_CHECKSUM }}
 
     steps:
 
@@ -178,13 +178,8 @@ jobs:
       run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Run Scripts
+      id: run-script
       run: bash ${{ env.PRJ_GITHUB_DIR }}/package-linux.sh
-
-    - name: Create checksum
-      id: create-checksum
-      run: |
-        LNXSHASUM=$(sha1sum ${{ env.ARCHI_LNXTAR }} | awk '{print $1}')
-        echo "LINUXTAR_CHECKSUM=$LNXSHASUM" >> $GITHUB_OUTPUT
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
@@ -206,8 +201,8 @@ jobs:
     runs-on: windows-latest
 
     outputs:
-      winzipchecksum: ${{ steps.create-checksums.outputs.WINZIP_CHECKSUM }}
-      winexehecksum: ${{ steps.create-checksums.outputs.WINEXE_CHECKSUM }}
+      winzipchecksum: ${{ steps.run-script.outputs.WINZIP_CHECKSUM }}
+      winexehecksum: ${{ steps.run-script.outputs.WINEXE_CHECKSUM }}
 
     steps:
 
@@ -252,17 +247,9 @@ jobs:
       run: ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Run Script
+      id: run-script
       shell: bash
       run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.sh
-
-    - name: Create Checksums
-      id: create-checksums
-      shell: bash
-      run: |
-        SHASUM=$(sha1sum ${{ env.ARCHI_WINZIP }} | awk '{print $1}')
-        echo "WINZIP_CHECKSUM=$SHASUM" >> $GITHUB_OUTPUT
-        SHASUM=$(sha1sum ${{ env.ARCHI_WINEXE }} | awk '{print $1}')
-        echo "WINEXE_CHECKSUM=$SHASUM" >> $GITHUB_OUTPUT
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
@@ -284,7 +271,7 @@ jobs:
     runs-on: macos-12
 
     outputs:
-      macintel_checksum: ${{ steps.create-checksum.outputs.MACINTEL_CHECKSUM }}
+      macintel_checksum: ${{ steps.run-script.outputs.MACINTEL_CHECKSUM }}
 
     steps:
 
@@ -330,6 +317,7 @@ jobs:
       run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Run Script
+      id: run-script
       env: 
         MAC_DEVELOPER_CERTIFICATE: ${{ secrets.MAC_DEVELOPER_CERTIFICATE }}
         MAC_DEVELOPER_CERTIFICATE_PWD: ${{ secrets.MAC_DEVELOPER_CERTIFICATE_PWD }}
@@ -338,12 +326,6 @@ jobs:
         MAC_PLATFORM: Intel
         NOTARIZE: ${{ github.event.inputs.macNotarize }}
       run: bash ${{ env.PRJ_GITHUB_DIR }}/package-mac.sh
-
-    - name: Create checksum
-      id: create-checksum
-      run: |
-        MACSHASUM=$(shasum ${{ env.ARCHI_MACINTELDMG }} | awk '{print $1}')
-        echo "MACINTEL_CHECKSUM=$MACSHASUM" >> $GITHUB_OUTPUT
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
@@ -365,7 +347,7 @@ jobs:
     runs-on: macos-12
 
     outputs:
-      macsilicon_checksum: ${{ steps.create-checksum.outputs.MACSILICON_CHECKSUM }}
+      macsilicon_checksum: ${{ steps.run-script.outputs.MACSILICON_CHECKSUM }}
 
     steps:
 
@@ -411,6 +393,7 @@ jobs:
       run: bash ${{ env.PRJ_GITHUB_DIR }}/globals.sh
 
     - name: Run Script
+      id: run-script
       env: 
         MAC_DEVELOPER_CERTIFICATE: ${{ secrets.MAC_DEVELOPER_CERTIFICATE }}
         MAC_DEVELOPER_CERTIFICATE_PWD: ${{ secrets.MAC_DEVELOPER_CERTIFICATE_PWD }}
@@ -419,12 +402,6 @@ jobs:
         MAC_PLATFORM: Silicon
         NOTARIZE: ${{ github.event.inputs.macNotarize }}
       run: bash ${{ env.PRJ_GITHUB_DIR }}/package-mac.sh
-
-    - name: Create checksum
-      id: create-checksum
-      run: |
-        MACSHASUM=$(shasum ${{ env.ARCHI_MACSILICONDMG }} | awk '{print $1}')
-        echo "MACSILICON_CHECKSUM=$MACSHASUM" >> $GITHUB_OUTPUT
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
