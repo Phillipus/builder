@@ -257,11 +257,12 @@ jobs:
 
     - name: Create Checksums
       id: create-checksums
+      shell: bash
       run: |
-        (certutil -hashfile $env:ARCHI_WINZIP SHA1)[1] | Tee-Object -variable SHASUM
-        echo "WINZIP_CHECKSUM=$SHASUM" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        (certutil -hashfile $env:ARCHI_WINEXE SHA1)[1] | Tee-Object -variable SHASUM
-        echo "WINEXE_CHECKSUM=$SHASUM" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        SHASUM=$(sha1sum ${{ env.ARCHI_WINZIP }} | awk '{print $1}')
+        echo "WINZIP_CHECKSUM=$SHASUM" >> $GITHUB_OUTPUT
+        SHASUM=$(sha1sum ${{ env.ARCHI_WINEXE }} | awk '{print $1}')
+        echo "WINEXE_CHECKSUM=$SHASUM" >> $GITHUB_OUTPUT
 
     - name: Upload to Release
       uses: xresloader/upload-to-github-release@v1
