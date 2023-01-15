@@ -228,6 +228,7 @@ jobs:
 
     - name: Download Windows JRE if not cached
       if: steps.cache-jre-win.outputs.cache-hit != 'true'
+      shell: bash
       run: |
         curl -o jre-win.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
         unzip -q jre-win.zip && mv jdk-17.0.5+8-jre jre-win
@@ -238,7 +239,8 @@ jobs:
         name: windows-product
 
     - name: Unzip product
-      run: tar -xf $env:WIN_PRODUCT_ZIP
+      shell: bash
+      run: unzip -q ${{ env.WIN_PRODUCT_ZIP }}
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
