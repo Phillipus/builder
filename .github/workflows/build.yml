@@ -27,19 +27,14 @@ jobs:
 
     steps:
 
-    - name: Checkout this
-      uses: actions/checkout@v3
-      with:
-        ref: dev
-
-    - name: Checkout Main repo
+    - name: Checkout archi
       uses: actions/checkout@v3
       with:
         repository: archimatetool/archi
         ref: master
         path: './archi'
     
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
@@ -86,7 +81,7 @@ jobs:
     - name: Maven Build
       if: steps.cache-build.outputs.cache-hit != 'true'
       run: |
-        cp .github/toolchains.xml ~/.m2/toolchains.xml
+        cp $PRJ_GITHUB_DIR/toolchains.xml ~/.m2/toolchains.xml
         mvn -V -f archi clean package -P product
 
     - name: Zip Archi Repository Site
@@ -117,12 +112,7 @@ jobs:
 
     steps:
 
-    - name: Checkout this
-      uses: actions/checkout@v3
-      with:
-        ref: dev
-
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
@@ -143,17 +133,17 @@ jobs:
         mv tmp/* .
 
     - name: Cache Linux JRE
-      id: cache-jre-lnx
+      id: cache-jre
       uses: actions/cache@v3
       with:
-        path: jre-lnx
+        path: Archi/jre
         key: jre-lnx-17.0.5+8
 
     - name: Download Linux JRE if not cached
-      if: steps.cache-jre-lnx.outputs.cache-hit != 'true'
+      if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre-lnx.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_linux_hotspot_17.0.5_8.tar.gz
-        tar -xf jre-lnx.tar.gz && mv jdk-17.0.5+8-jre jre-lnx
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_linux_hotspot_17.0.5_8.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre Archi/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -194,7 +184,7 @@ jobs:
       with:
         ref: dev
 
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
@@ -217,18 +207,18 @@ jobs:
         mv tmp/* .
 
     - name: Cache Windows JRE
-      id: cache-jre-win
+      id: cache-jre
       uses: actions/cache@v3
       with:
-        path: jre-win
+        path: Archi/jre
         key: jre-win-17.0.5+8
 
     - name: Download Windows JRE if not cached
-      if: steps.cache-jre-win.outputs.cache-hit != 'true'
+      if: steps.cache-jre.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -o jre-win.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
-        unzip -q jre-win.zip && mv jdk-17.0.5+8-jre jre-win
+        curl -o jre.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
+        unzip -q jre.zip && mv jdk-17.0.5+8-jre Archi/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -265,12 +255,7 @@ jobs:
 
     steps:
 
-    - name: Checkout this
-      uses: actions/checkout@v3
-      with:
-        ref: dev
-
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
@@ -292,17 +277,17 @@ jobs:
         mv tmp/* ./Archi
 
     - name: Cache Mac Intel JRE
-      id: cache-jre-mac-intel
+      id: cache-jre
       uses: actions/cache@v3
       with:
-        path: jre-mac-intel
+        path: Archi/Archi.app/Contents/jre
         key: jre-mac-intel-17.0.5+8
 
     - name: Download Mac Intel JRE if not cached
-      if: steps.cache-jre-mac-intel.outputs.cache-hit != 'true'
+      if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre-mac-intel.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_mac_hotspot_17.0.5_8.tar.gz
-        tar -xf jre-mac-intel.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-intel
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_mac_hotspot_17.0.5_8.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home Archi/Archi.app/Contents/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -344,12 +329,7 @@ jobs:
 
     steps:
 
-    - name: Checkout this
-      uses: actions/checkout@v3
-      with:
-        ref: dev
-
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
@@ -371,17 +351,17 @@ jobs:
         mv tmp/* ./Archi
 
     - name: Cache Mac Silicon JRE
-      id: cache-jre-mac-silicon
+      id: cache-jre
       uses: actions/cache@v3
       with:
-        path: jre-mac-silicon
+        path: Archi/Archi.app/Contents/jre
         key: jre-mac-silicon-17.0.5+8
 
     - name: Download Mac Silicon if not cached
-      if: steps.cache-jre-mac-silicon.outputs.cache-hit != 'true'
+      if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre-mac-silicon.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.5_8.tar.gz
-        tar -xf jre-mac-silicon.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-silicon
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.5_8.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home Archi/Archi.app/Contents/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -419,7 +399,7 @@ jobs:
 
     steps:
 
-    - name: Checkout Archi Build
+    - name: Checkout archi-build
       uses: actions/checkout@v3
       with:
         repository: Phillipus/archi-build
