@@ -18,9 +18,12 @@ env:
 
 jobs:
 
-  # Run Maven and upload the product archives
+  # Run Maven and upload the product archives to the cache
   maven-build:
     runs-on: ubuntu-latest
+
+    outputs:
+      build-sha1: ${{ steps.sha1.outputs.BUILD_SHA1 }}
 
     steps:
 
@@ -60,55 +63,31 @@ jobs:
         path: ~/.m2/repository
         key: maven-${{ hashFiles('**/pom.xml') }}
 
-    - name: SHA Hash of Archi repo
-      run: echo "GIT_HASH=$(git -C archi rev-parse master)" >> $GITHUB_ENV
+    - name: SHA Hash of latest master commit in Archi repo
+      id: sha1
+      run: |
+        SHA=$(git -C archi rev-parse master)
+        echo "BUILD_SHA1=$SHA" >> $GITHUB_OUTPUT
 
-    - name: Cache Maven Build
+    - name: Cache Latest Build
       id: cache-build
       uses: actions/cache@v3
       with:
-        path: |
-          archi/com.archimatetool.editor.product/target/products/Archi*.*
-          archi/com.archimatetool.editor.site/target/repository
-        key: target-${{ env.GIT_HASH }}
+        path: ${{ env.PRODUCT_PATH }}/Archi*.zip
+        key: build-${{ steps.sha1.outputs.BUILD_SHA1 }}
+
+    - name: Cache Latest Site Build
+      id: cache-site
+      uses: actions/cache@v3
+      with:
+        path: ${{ env.SITE_DIR }}/repository
+        key: site-${{ steps.sha1.outputs.BUILD_SHA1 }}
 
     - name: Maven Build
       if: steps.cache-build.outputs.cache-hit != 'true'
       run: |
         cp .github/toolchains.xml ~/.m2/toolchains.xml
         mvn -V -f archi clean package -P product
-
-    - name: Upload Linux Product
-      uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: linux-product
-        retention-days: 1
-        path: ${{ env.PRODUCT_PATH }}/${{ env.LNX_PRODUCT_ARCHIVE }}
-
-    - name: Upload Windows Product
-      uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: windows-product
-        retention-days: 1
-        path: ${{ env.PRODUCT_PATH }}/${{ env.WIN_PRODUCT_ARCHIVE }}
-
-    - name: Upload Mac Intel Product
-      uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: mac-intel-product
-        retention-days: 1
-        path: ${{ env.PRODUCT_PATH }}/${{ env.MAC_INTEL_PRODUCT_ARCHIVE }}
-
-    - name: Upload Mac Silicon Product
-      uses: actions/upload-artifact@v3
-      if: success()
-      with:
-        name: mac-silicon-product
-        retention-days: 1
-        path: ${{ env.PRODUCT_PATH }}/${{ env.MAC_SILICON_PRODUCT_ARCHIVE }}
 
     - name: Zip Archi Repository Site
       run: |
@@ -151,6 +130,18 @@ jobs:
         path: './archi-build'
         token: ${{ secrets.PAT }}
 
+    - name: Get Product Zip from Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ${{ env.PRODUCT_PATH }}/Archi*.zip
+        key: build-${{ needs.maven-build.outputs.build-sha1 }}
+
+    - name: Unzip Product
+      run: |
+        unzip -q $PRODUCT_PATH/$LNX_PRODUCT_ARCHIVE -d ./tmp
+        rm -r archi
+        mv tmp/* .
+
     - name: Cache Linux JRE
       id: cache-jre-lnx
       uses: actions/cache@v3
@@ -163,14 +154,6 @@ jobs:
       run: |
         curl -o jre-lnx.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_linux_hotspot_17.0.5_8.tar.gz
         tar -xf jre-lnx.tar.gz && mv jdk-17.0.5+8-jre jre-lnx
-
-    - name: Get Linux Product
-      uses: actions/download-artifact@v3
-      with:
-        name: linux-product
-
-    - name: Unzip product
-      run: unzip -q $LNX_PRODUCT_ARCHIVE
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -219,6 +202,20 @@ jobs:
         path: './archi-build'
         token: ${{ secrets.PAT }}
 
+    - name: Get Product Zip from Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ${{ env.PRODUCT_PATH }}/Archi*.zip
+        key: build-${{ needs.maven-build.outputs.build-sha1 }}
+        enableCrossOsArchive: true
+
+    - name: Unzip Product
+      shell: bash
+      run: |
+        unzip -q $PRODUCT_PATH/$WIN_PRODUCT_ARCHIVE -d ./tmp
+        rm -r archi
+        mv tmp/* .
+
     - name: Cache Windows JRE
       id: cache-jre-win
       uses: actions/cache@v3
@@ -232,15 +229,6 @@ jobs:
       run: |
         curl -o jre-win.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
         unzip -q jre-win.zip && mv jdk-17.0.5+8-jre jre-win
-
-    - name: Get Windows Product
-      uses: actions/download-artifact@v3
-      with:
-        name: windows-product
-
-    - name: Unzip product
-      shell: bash
-      run: unzip -q ${{ env.WIN_PRODUCT_ARCHIVE }}
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -290,6 +278,19 @@ jobs:
         path: './archi-build'
         token: ${{ secrets.PAT }}
 
+    - name: Get Product Zip from Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ${{ env.PRODUCT_PATH }}/Archi*.zip
+        key: build-${{ needs.maven-build.outputs.build-sha1 }}
+
+    - name: Unzip Product
+      run: |
+        unzip -q $PRODUCT_PATH/$MAC_INTEL_PRODUCT_ARCHIVE -d ./tmp
+        rm -r archi
+        mkdir -p Archi
+        mv tmp/* ./Archi
+
     - name: Cache Mac Intel JRE
       id: cache-jre-mac-intel
       uses: actions/cache@v3
@@ -302,16 +303,6 @@ jobs:
       run: |
         curl -o jre-mac-intel.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_mac_hotspot_17.0.5_8.tar.gz
         tar -xf jre-mac-intel.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-intel
-
-    - name: Get Mac Intel Product
-      uses: actions/download-artifact@v3
-      with:
-        name: mac-intel-product
-
-    - name: Unzip product
-      run: |
-        mkdir -p Archi
-        unzip -q $MAC_INTEL_PRODUCT_ARCHIVE -d Archi
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -366,6 +357,19 @@ jobs:
         path: './archi-build'
         token: ${{ secrets.PAT }}
 
+    - name: Get Product Zip from Cache
+      uses: actions/cache/restore@v3
+      with:
+        path: ${{ env.PRODUCT_PATH }}/Archi*.zip
+        key: build-${{ needs.maven-build.outputs.build-sha1 }}
+
+    - name: Unzip Product
+      run: |
+        unzip -q $PRODUCT_PATH/$MAC_SILICON_PRODUCT_ARCHIVE -d ./tmp
+        rm -r archi
+        mkdir -p Archi
+        mv tmp/* ./Archi
+
     - name: Cache Mac Silicon JRE
       id: cache-jre-mac-silicon
       uses: actions/cache@v3
@@ -378,16 +382,6 @@ jobs:
       run: |
         curl -o jre-mac-silicon.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.5_8.tar.gz
         tar -xf jre-mac-silicon.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home jre-mac-silicon
-
-    - name: Get Mac Silicon Product
-      uses: actions/download-artifact@v3
-      with:
-        name: mac-silicon-product
-
-    - name: Unzip product
-      run: |
-        mkdir -p Archi
-        unzip -q $MAC_SILICON_PRODUCT_ARCHIVE -d Archi
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
