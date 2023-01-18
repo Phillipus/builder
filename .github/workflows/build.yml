@@ -229,6 +229,9 @@ jobs:
     - name: Run Script
       id: run-script
       shell: bash
+      env:
+        WIN_CODESIGN_CERTIFICATE: ${{ secrets.WIN_CODESIGN_CERTIFICATE}}
+        WIN_CODESIGN_CERTIFICATE_PWD: ${{ secrets.WIN_CODESIGN_CERTIFICATE_PWD}}
       run: ${{ env.PRJ_GITHUB_DIR }}/package-windows.sh
 
     - name: Upload to Release
