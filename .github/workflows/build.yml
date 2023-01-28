@@ -142,13 +142,13 @@ jobs:
       uses: actions/cache@v3
       with:
         path: Archi/jre
-        key: jre-lnx-17.0.5+8
+        key: jre-lnx-17.0.6+10
 
     - name: Download Linux JRE if not cached
       if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_linux_hotspot_17.0.5_8.tar.gz
-        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre Archi/jre
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jre_x64_linux_hotspot_17.0.6_10.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.6+10-jre Archi/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -216,14 +216,14 @@ jobs:
       uses: actions/cache@v3
       with:
         path: Archi/jre
-        key: jre-win-17.0.5+8
+        key: jre-win-17.0.6+10
 
     - name: Download Windows JRE if not cached
       if: steps.cache-jre.outputs.cache-hit != 'true'
       shell: bash
       run: |
-        curl -o jre.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_windows_hotspot_17.0.5_8.zip
-        unzip -q jre.zip && mv jdk-17.0.5+8-jre Archi/jre
+        curl -o jre.zip -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jre_x64_windows_hotspot_17.0.6_10.zip
+        unzip -q jre.zip && mv jdk-17.0.6+10-jre Archi/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -289,13 +289,13 @@ jobs:
       uses: actions/cache@v3
       with:
         path: Archi/Archi.app/Contents/jre
-        key: jre-mac-intel-17.0.5+8
+        key: jre-mac-intel-17.0.6+10
 
     - name: Download Mac Intel JRE if not cached
       if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_x64_mac_hotspot_17.0.5_8.tar.gz
-        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home Archi/Archi.app/Contents/jre
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jre_x64_mac_hotspot_17.0.6_10.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.6+10-jre/Contents/Home Archi/Archi.app/Contents/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
@@ -363,13 +363,13 @@ jobs:
       uses: actions/cache@v3
       with:
         path: Archi/Archi.app/Contents/jre
-        key: jre-mac-silicon-17.0.5+8
+        key: jre-mac-silicon-17.0.6+10
 
     - name: Download Mac Silicon if not cached
       if: steps.cache-jre.outputs.cache-hit != 'true'
       run: |
-        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.5%2B8/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.5_8.tar.gz
-        tar -xf jre.tar.gz && mv jdk-17.0.5+8-jre/Contents/Home Archi/Archi.app/Contents/jre
+        curl -o jre.tar.gz -L https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.6%2B10/OpenJDK17U-jre_aarch64_mac_hotspot_17.0.6_10.tar.gz
+        tar -xf jre.tar.gz && mv jdk-17.0.6+10-jre/Contents/Home Archi/Archi.app/Contents/jre
 
       # Run these in separate steps because writing to GITHUB_ENV affects the following steps within the job not the same Run step
 
